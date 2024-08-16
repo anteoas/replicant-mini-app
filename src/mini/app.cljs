@@ -2,7 +2,16 @@
   (:require [clojure.walk :as walk]
             [replicant.dom :as r]))
 
-(defonce ^:private !state (atom {}))
+(defonce ^:private !state (atom {:ui/banner-text "An annoying banner"}))
+
+(defn banner-view [{:ui/keys [banner-text]}]
+  [:div {:id "banner"
+         :style {:top 0
+                 :transition "top 0.25s"}
+         :replicant/mounting {:style {:top "-100px"}}
+         :replicant/unmounting {:style {:top "-100px"}}}
+   [:p banner-text]
+   [:button {:on {:click [[:ui/dismiss-banner]]}} "Dismiss"]])
 
 (defn- edit-view []
   [:form {:on {:submit [[:dom/prevent-default]
@@ -18,6 +27,8 @@
 (defn- main-view [state]
   [:div {:replicant/on-mount [[:something/init-something :dom/node]]
          :style {:position "relative"}}
+   (when (:ui/banner-text state)
+     (banner-view state))
    [:h1 "Hello, world!"]
    (edit-view)
    (display-view state)])
@@ -61,6 +72,7 @@
         :dom/prevent-default (.preventDefault js-event)
         :something/init-something (swap! !state merge {:something/dom-node (second enriched-action)})
         :db/assoc (apply swap! !state assoc (rest enriched-action))
+        :ui/dismiss-banner (swap! !state dissoc :ui/banner-text)
         (prn "Unknown action" enriched-action)))))
 
 (defn ^{:dev/after-load true :export true} start! []
