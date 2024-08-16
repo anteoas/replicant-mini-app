@@ -1,0 +1,11 @@
+{
+  "name": "replicant-mini-app",
+  "version": "0.0.1",
+  "description": "A mini Replicant app",
+  "keywords": ["ClojureScript", "Replicant", "vdom"],
+  "author": "PEZ",
+  "license": "MIT",
+  "devDependencies": {
+    "shadow-cljs": "^2.28.12"
+  }
+}
