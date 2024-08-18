@@ -16,7 +16,7 @@
 (defn- edit-view []
   [:form {:on {:submit [[:dom/prevent-default]
                         [:db/assoc :something/saved [:db/get :something/draft]]]}}
-   [:input {:on {:input [[:db/assoc :something/draft :event/target.value]]}}]
+   [:input#draft {:on {:input [[:db/assoc :something/draft :event/target.value]]}}]
    [:button {:type :submit} "Save draft"]])
 
 (defn- display-view [{:something/keys [draft saved dom-node]}]
@@ -36,7 +36,7 @@
   [:div {:style {:position "relative"}}
    (when (:ui/banner-text state)
      (banner-view state))
-   [:h1 "Hello, world!"]
+   [:h1 "A tiny Replicant example"]
    (edit-view)
    (display-view state)
    (something-view)])
@@ -69,7 +69,7 @@
        :else x))
    action))
 
-(defn- event-handler [{:replicant/keys [js-event] :as replicant-data} actions]
+(defn- event-handler [{:replicant/keys [^js js-event] :as replicant-data} actions]
   (doseq [action actions]
     (prn "Triggered action" action)
     (let [enriched-action (->> action
@@ -79,7 +79,7 @@
       (case (first enriched-action)
         :dom/prevent-default (.preventDefault js-event)
         :something/init-something (do 
-                                    (js/console.log "Init something, dom-node:" (second enriched-action))
+                                    (js/console.debug "Init something, dom-node:" (second enriched-action))
                                     (swap! !state merge {:something/dom-node (second enriched-action)}))
         :db/assoc (apply swap! !state assoc (rest enriched-action))
         :ui/dismiss-banner (swap! !state dissoc :ui/banner-text)
