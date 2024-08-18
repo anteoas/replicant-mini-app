@@ -5,11 +5,10 @@
 (defonce ^:private !state (atom {:ui/banner-text "An annoying banner"}))
 
 (defn banner-view [{:ui/keys [banner-text]}]
-  [:div {:id "banner"
-         :style {:top 0
-                 :transition "top 0.25s"}
-         :replicant/mounting {:style {:top "-100px"}}
-         :replicant/unmounting {:style {:top "-100px"}}}
+  [:div#banner {:style {:top 0
+                        :transition "top 0.25s"}
+                :replicant/mounting {:style {:top "-100px"}}
+                :replicant/unmounting {:style {:top "-100px"}}}
    [:p banner-text]
    [:button {:on {:click [[:ui/dismiss-banner]]}} "Dismiss"]])
 
