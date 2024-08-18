@@ -9,7 +9,7 @@ This is an example of how to wire up a Replicant app, with a focus on keeping th
 
 ## Running the app
 
-We're using [shadow-cljs](https://github.com/thheller/shadow-cljs) to build the app. Clojure editors like [Calva](https://calva.io) and [CIDER](https://cider.mx/) will let you quickly start the app and connect you to the REPL. You can also just run it without installing anything, by using npx:
+We're using [shadow-cljs](https://github.com/thheller/shadow-cljs) to build the app. Clojure editors like [Calva](https://calva.io) and [CIDER](https://cider.mx/) will let you quickly start the app and connect you to its REPL. You can also just run it without installing anything, by using npx:
 
 ```sh
 npx shadow-cljs watch :app  
@@ -19,9 +19,9 @@ Once built, you can access the app at http://localhost:8787
 
 ## Reading the code
 
-All the code is in [src/mini/app.cljs](src/mini/app.cljs). It is largely void of any comments, to make it easier to read. Here are some pointers to get you started:
+All the code is in [src/mini/app.cljs](src/mini/app.cljs). It is largely void of any comments, to make it easier to read. Here is some context to get you started:
 
-The app uses vectors for the event and lifecycle hook handlers. Each _event_/_hook_ vector holds zero or more _actions_, which also are vectors. The first element of an _action_ vector is the action key/identifier, and the rest of the elements are the arguments to the action. See the `event-handler` function for how we dispatch on the action keys.
+The app uses vectors for the event and lifecycle hook handlers. Each _event_/_hook_ vector holds zero or more _actions_, which also are vectors. The _actions_ will be executed in the order they appear in the _event_ vector. The first element of an _action_ vector is the action key/identifier, and the rest of the elements are the arguments to the action. See the `event-handler` function for how we dispatch on the action keys.
 
 Here's the `edit-view` function from the app:
 
@@ -39,14 +39,14 @@ Typing in the `input` element, will fire an event with one action:
 
 1.  `[:db/assoc :something/draft :event/target.value]`
 
-The event handler has access to a reference to the atom we use to store the state of the app. You can probably guess what the action does. But of course we are not `assoc`iating `:event/target.value` into the database. We will first replace it with the actual value of the input field. We can do this because Replicant will provide the event handler with some data of the event, includingthe DOM event object. We refer to this replacing as _enriching_ the action. See the `enrich-action-from-event` function.
+The event handler has access to a reference to the atom we use to store the state of the app. You can probably guess what the action does. But of course we are not `assoc`iating `:event/target.value` into the database. The event handler will first replace it with the actual value of the input field. We can do this because Replicant will provide the event handler with some data of the event, includingthe DOM event object. We refer to this replacing as _enriching_ the action. See the `enrich-action-from-event` function.
 
 Enrichment also involves replacing certain forms in the actions with data from the database (using the `enrich-action-from-state` function). This is in play when submitting the form, which will fire an event of two actions:
 
 1. `[:dom/prevent-default]`
 2. `[:db/assoc :something/saved [:db/get :something/draft]]`
 
-The first action will be replaced with a `(.preventDefault js-event)` call . It's the section action that has the state enrichment. The form `[:db/get :something/draft]` will be replaced with the value of the database at the key `:something/draft`.
+The first action will be replaced with a `(.preventDefault js-event)` call . It's the _second_ action that has the state enrichment. The form `[:db/get :something/draft]` will be replaced with the value of the database at the key `:something/draft`.
 
 We can take a look at the console log of this example run:
 
@@ -69,7 +69,7 @@ In the log we can find the result of:
  
 ## It's just an example
 
-The `action` semantics used in this example can be replaced by anything. Maybe you want to use maps, or whatever. Replicant is a library and not a framework. The library facilitates, but does not mandate, pure data oriented views. You can use regular functions in the event handlers if you like. If you want to stay in data land, by all means, feel free to be inspired by the small framework we set up in this example app.
+The `actions` semantics used in this example can be replaced by anything. Maybe you want to use maps, or whatever. Replicant is a library and not a framework. The library facilitates, but does not mandate, pure data oriented views. You can use regular functions in the event handlers if you like. If you want to stay in data land, feel invited to be inspired by the small framework we set up in this example app.
 
 ## Pure data CSS transitions
 
@@ -85,10 +85,16 @@ Yes, the example app uses the Gadget inspector, but to benefit from it you'll ne
 bb dev:build-inspector-extension
 ```
 
-Assuming you have [Babashka](https://babashka.org/) installed.
+(Assuming you have [Babashka](https://babashka.org/) installed.)
 
 ## Dumdom
 
 Does the code look very similar to that of a [Dumdom](https://github.com/cjohansen/dumdom) app? That's because Christian created Dumdom, and Replicant is his next iteration where he got rid of the dependency on [Snabbdom](https://github.com/snabbdom/snabbdom) and the API compatability with [Quiescent](https://github.com/levand/quiescent/), including Components. (Replicant views are just regular functions returning hiccup.)
 
+## Licence
+
+Public Domain, Unlicense. See [LICENSE.md](LICENSE.md).
+
 ## Happy coding! ♥️
+
+Please file issues if you have any questions or suggestions. Pull requests are also welcome (but please file an issue first if your PR would be beyond things like fixing typos). 🙏
