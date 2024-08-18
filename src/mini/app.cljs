@@ -41,11 +41,6 @@
    (display-view state)
    (something-view)])
 
-(defn- render! [state]
-  (r/render
-   (js/document.getElementById "app")
-   (main-view state)))
-
 (defn- enrich-action-from-event [{:replicant/keys [js-event node]} actions]
   (letfn [(process [x]
             (cond
@@ -84,6 +79,11 @@
         :db/assoc (apply swap! !state assoc (rest enriched-action))
         :ui/dismiss-banner (swap! !state dissoc :ui/banner-text)
         (prn "Unknown action" enriched-action)))))
+
+(defn- render! [state]
+  (r/render
+   (js/document.getElementById "app")
+   (main-view state)))
 
 (defn ^{:dev/after-load true :export true} start! []
   (render! @!state))
