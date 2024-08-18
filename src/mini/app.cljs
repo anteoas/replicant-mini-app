@@ -19,19 +19,27 @@
    [:input {:on {:input [[:db/assoc :something/draft :event/target.value]]}}]
    [:button {:type :submit} "Save draft"]])
 
-(defn- display-view [{:something/keys [draft saved]}]
+(defn- display-view [{:something/keys [draft saved dom-node]}]
   [:div
-   [:p "Draft: " draft]
-   [:p "Saved: " saved]])
+   [:h2 "On display"]
+   [:ul
+    [:li {:replicant/key "draft"} "Draft: " draft]
+    [:li {:replicant/key "saved"} "Saved: " saved]
+    (when dom-node
+      [:li {:replicant/key "dom-node"} "ID of something dom-node: " [:code (.-id dom-node)]])]])
+
+(defn- something-view []
+  [:div#something-something {:replicant/on-mount [[:something/init-something :dom/node]]}
+   [:p "Something, something"]])
 
 (defn- main-view [state]
-  [:div {:replicant/on-mount [[:something/init-something :dom/node]]
-         :style {:position "relative"}}
+  [:div {:style {:position "relative"}}
    (when (:ui/banner-text state)
      (banner-view state))
    [:h1 "Hello, world!"]
    (edit-view)
-   (display-view state)])
+   (display-view state)
+   (something-view)])
 
 (defn- render! [state]
   (r/render
@@ -70,7 +78,9 @@
       (prn "Enriched action" enriched-action)
       (case (first enriched-action)
         :dom/prevent-default (.preventDefault js-event)
-        :something/init-something (swap! !state merge {:something/dom-node (second enriched-action)})
+        :something/init-something (do 
+                                    (js/console.log "Init something, dom-node:" (second enriched-action))
+                                    (swap! !state merge {:something/dom-node (second enriched-action)}))
         :db/assoc (apply swap! !state assoc (rest enriched-action))
         :ui/dismiss-banner (swap! !state dissoc :ui/banner-text)
         (prn "Unknown action" enriched-action)))))
