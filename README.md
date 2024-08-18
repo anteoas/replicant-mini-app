@@ -73,7 +73,7 @@ The `actions` semantics used in this example can be replaced by anything. Maybe 
 
 ## Pure data CSS transitions
 
-The app also sports an example of how to use Replicant's pure data CSS transitions (the annoying banner).
+The app also sports an example of how to use Replicant's pure data CSS transitions (that's the annoying banner when the app starts).
 
 ## Gadget inspector
 
