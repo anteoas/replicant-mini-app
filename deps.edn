@@ -2,4 +2,5 @@
         org.clojure/clojurescript  {:mvn/version "1.11.132"}
         thheller/shadow-cljs       {:mvn/version "2.28.12"}
         no.cjohansen/replicant     {:git/url "https://github.com/cjohansen/replicant"
-                                    :git/sha "09d7edd6246073b0953f5971991c2d851d4e68e6"}}}
+                                    :git/sha "09d7edd6246073b0953f5971991c2d851d4e68e6"}
+        cjohansen/gadget-inspector {:mvn/version "0.2023.04.12"}}}

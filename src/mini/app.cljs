@@ -1,5 +1,6 @@
 (ns mini.app
   (:require [clojure.walk :as walk]
+            [gadget.inspector :as inspector]
             [replicant.dom :as r]))
 
 (defonce ^:private !state (atom {:ui/banner-text "An annoying banner"}))
@@ -78,6 +79,7 @@
   (render! @!state))
 
 (defn ^:export init! []
+  (inspector/inspect "App state" !state)
   (r/set-dispatch! event-handler)
   (add-watch !state :render (fn [_k _r o n]
                               (when (not= o n)
