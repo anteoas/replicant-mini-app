@@ -1,0 +1,6 @@
+{:paths ["." "scripts"]
+ :tasks {:requires ([tasks :as t])
+         
+         dev:build-inspector-extension
+         {:task t/build-inspector-extension!
+          :doc "Build the Gadget Inspector Chrome Extension"}}}

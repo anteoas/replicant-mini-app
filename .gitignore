@@ -24,4 +24,5 @@ pom.xml.asc
 .lsp/.cache
 .clj-kondo/.cache
 
+/gadget-inspector/
 /scrap/
