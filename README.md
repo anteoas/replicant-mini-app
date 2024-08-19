@@ -69,7 +69,39 @@ In the log we can find the result of:
  
 ## It's just an example
 
-The `actions` semantics used in this example can be replaced by anything. Maybe you want to use maps, or whatever. Replicant is a library and not a framework. The library facilitates, but does not mandate, pure data oriented views. You can use regular functions in the event handlers if you like. If you want to stay in data land, feel invited to be inspired by the small framework we set up in this example app.
+The `actions` semantics used in this example can be replaced by anything. Maybe you want to use maps, or whatever. Replicant is a library and not a framework. The library facilitates, but does not mandate, pure data oriented views. You can use regular functions in the event handlers if you like. If you want to stay in data land, feel invited to be inspired by the small framework we set up in this example app. At Anteo we use something similar in our production apps, with different adaptations to suit the specific needs of each app.
+
+### Some ideas for adaptations
+
+Keeping the example app mini and to the point, we've left quite a bit of room for adaptations. Here are some ideas we use in our apps:
+
+#### core.match those actions
+
+We find that [core.match](https://github.com/clojure/core.match) is exceptionally well suited for implementing action handlers. If we use that instead of the `case` in the `event-handler` function, it looks like so:
+
+```clojure
+      (match enriched-action
+        [:dom/prevent-default] (.preventDefault js-event)
+        [:something/init-something element] (do
+                                              (js/console.debug "Init something, dom-node:" element)
+                                              (swap! !state merge {:something/dom-node element}))
+        [:db/assoc & args] (apply swap! !state assoc args)
+        [:ui/dismiss-banner] (swap! !state dissoc :ui/banner-text))
+```
+
+Which make it much easier for a human to parse the action vectors being matched.
+
+#### Split on action namespace
+
+If your app has a lot of action handlers, you may want to split them into separate namespaces. You can use the central `event-handler` function to dispatch based on the namespace of the action identifier.
+
+#### re-frame style event handlers
+
+[re-frame](https://github.com/day8/re-frame) separates the handlers into events and effects. You can do the same, by making your action handlers non-effectful. E.g. return a map with any new state and any effects to be executed. Then take care of the state updates outside the action handlers and add an effect handler for dealing with everything effectful. This makes your action handlers easier to reason about and to test. It also makes it straightforward to adapt many re-frame effect handlers out there to work with your Replicant app.
+
+#### Validate the actions
+
+You can make the `event-handler` function detect that you are running in development mode and use Malli to validate the actions (and effects if you go re-frame style). An event driven app can get a bit hard to debug, and getting early warning about non-conforming actions can save the day.
 
 ## Pure data CSS transitions
 
@@ -89,11 +121,11 @@ bb dev:build-inspector-extension
 
 ## Dumdom
 
-Does the code look very similar to that of a [Dumdom](https://github.com/cjohansen/dumdom) app? That's because Christian created Dumdom, and Replicant is his next iteration where he got rid of the dependency on [Snabbdom](https://github.com/snabbdom/snabbdom) and the API compatability with [Quiescent](https://github.com/levand/quiescent/), including Components. (Replicant views are just regular functions returning hiccup.)
+Does the code look very similar to that of a [Dumdom](https://github.com/cjohansen/dumdom) app? That's because Christian created Dumdom, and Replicant is his next iteration where he got rid of the dependency on [Snabbdom](https://github.com/snabbdom/snabbdom) and the API compatability with [Quiescent](https://github.com/levand/quiescent/), including **Components**. (Replicant views are just regular functions returning hiccup.)
 
 ## Licence
 
-Public Domain, Unlicense. See [LICENSE.md](LICENSE.md).
+Public Domain, **Unlicense**. See [LICENSE.md](LICENSE.md).
 
 ## Happy coding! ♥️
 
