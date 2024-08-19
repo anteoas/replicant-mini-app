@@ -1,5 +1,6 @@
 (ns mini.app
-  (:require [clojure.walk :as walk]
+  (:require [clojure.core.match :refer [match]]
+            [clojure.walk :as walk]
             [gadget.inspector :as inspector]
             [replicant.dom :as r]))
 
@@ -71,14 +72,13 @@
                                (enrich-action-from-event replicant-data)
                                (enrich-action-from-state @!state))]
       (prn "Enriched action" enriched-action)
-      (case (first enriched-action)
-        :dom/prevent-default (.preventDefault js-event)
-        :something/init-something (do 
-                                    (js/console.debug "Init something, dom-node:" (second enriched-action))
-                                    (swap! !state merge {:something/dom-node (second enriched-action)}))
-        :db/assoc (apply swap! !state assoc (rest enriched-action))
-        :ui/dismiss-banner (swap! !state dissoc :ui/banner-text)
-        (prn "Unknown action" enriched-action)))))
+      (match enriched-action
+        [:dom/prevent-default] (.preventDefault js-event)
+        [:something/init-somethings element] (do
+                                               (js/console.debug "Init something, dom-node:" element)
+                                               (swap! !state merge {:something/dom-node element}))
+        [:db/assoc & args] (apply swap! !state assoc args)
+        [:ui/dismiss-banner] (swap! !state dissoc :ui/banner-text)))))
 
 (defn- render! [state]
   (r/render
