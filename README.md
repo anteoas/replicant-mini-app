@@ -19,11 +19,32 @@ Once built, you can access the app at http://localhost:8787
 
 ## Reading the code
 
-All the code is in [src/mini/app.cljs](src/mini/app.cljs). It is largely void of any comments, to make it easier to read. Here is some context to get you started:
+All the code is in [src/mini/app.cljs](src/mini/app.cljs). It is largely void of any comments, to make it easier to navigate. Here is some context to get you started:
 
-The app uses vectors for the event and lifecycle hook handlers. Each _event_/_hook_ vector holds zero or more _actions_, which also are vectors. The _actions_ will be executed in the order they appear in the _event_ vector. The first element of an _action_ vector is the action key/identifier, and the rest of the elements are the arguments to the action. See the `event-handler` function for how we dispatch on the action keys.
+The app uses vectors for the event and lifecycle hook handlers. Each _event_/_hook_ vector holds zero or more _actions_, which also are vectors. The _actions_ will be executed in the order they appear in the _event_ vector. The first element of an _action_ vector is the action key/identifier, and the rest of the elements are the arguments to the action. Here's the `event-handler` function where we dispatch on the action keys. (Destructured to `action-name`):
 
-Here's the `edit-view` function from the app:
+```clojure
+(defn- event-handler [{:replicant/keys [^js js-event] :as replicant-data} actions]
+  (doseq [action actions]
+    (prn "Triggered action" action)
+    (let [enriched-action (->> action
+                               (enrich-action-from-event replicant-data)
+                               (enrich-action-from-state @!state))
+          [action-name & args] enriched-action]
+      (prn "Enriched action" enriched-action)
+      (case action-name
+        :dom/prevent-default (.preventDefault js-event)
+        :db/assoc (apply swap! !state assoc (rest enriched-action))
+        :ui/dismiss-banner (swap! !state dissoc :ui/banner-text)
+        :dom/set-input-text (set! (.-value (first args)) (second args))
+        :dom/focus-element (.focus (first args))
+        (prn "Unknown action" action))))
+  (render! @!state))
+```
+
+See the [Replicant README](https://github.com/cjohansen/replicant?tab=readme-ov-file#replicantdomset-dispatch-f) on what data is available in the `replicant-data` argument of the event handler. This handler only uses `:replicant/js-event`, and `:replicant/node` (in `enrich-action-from-event`).
+
+Here's a stripped-down version of the `edit-view` function from the app:
 
 ```clojure
 (defn- edit-view []
@@ -67,6 +88,30 @@ In the log we can find the result of:
    "Enriched action" [:db/assoc :something/saved "a"]
    ```
  
+ ### Insisting on data only views
+ 
+ The actual edit view code looks like so:
+ 
+ ```clojure
+ (defn- edit-view [{:something/keys [draft]}]
+  [:div
+   [:h2 "Edit"]
+   [:form {:on {:submit [[:dom/prevent-default]
+                         [:db/assoc :something/saved [:db/get :something/draft]]]}}
+    [:span.wrap-input
+     [:input#draft {:replicant/on-mount [[:db/assoc :something/draft-input-element :dom/node]]
+                    :on {:input [[:db/assoc :something/draft :event/target.value]]}}]
+     (when-not (string/blank? draft)
+       [:span.icon-right {:on {:click [[:db/assoc :something/draft ""]
+                                       [:dom/set-input-text [:db/get :something/draft-input-element] ""]
+                                       [:dom/focus-element [:db/get :something/draft-input-element]]]}
+                          :title "Clear draft"}
+        "⨉"])]
+    [:button {:type :submit} "Save draft"]]])
+ ```
+ 
+What's new here is the clear button that appears only when there is data. When clicked, it clears both the draft (in the appp db) and the input field (in the DOM). Plus focus the input field (in the DOM). This DOM work could be achieved with functions quering and setting state directly on the DOM. But we want it to be pure data in the view, so we have added a life-cycle hook that will fire an action that saves the element to the app db when the input field mounts. Then, when the clear icon is clicked, we will fire actions that will do the quering and setting of the DOM state. These actions picks up the element from the app db.
+ 
 ## It's just an example
 
 The `actions` semantics used in this example can be replaced by anything. Maybe you want to use maps, or whatever. Replicant is a library and not a framework. The library facilitates, but does not mandate, pure data oriented views. You can use regular functions in the event handlers if you like. If you want to stay in data land, feel invited to be inspired by the small framework we set up in this example app. At Anteo we use something similar in our production apps, with different adaptations to suit the specific needs of each app.
@@ -81,15 +126,15 @@ We find that [core.match](https://github.com/clojure/core.match) is exceptionall
 
 ```clojure
       (match enriched-action
-        [:dom/prevent-default] (.preventDefault js-event)
-        [:something/init-something element] (do
-                                              (js/console.debug "Init something, dom-node:" element)
-                                              (swap! !state merge {:something/dom-node element}))
-        [:db/assoc & args] (apply swap! !state assoc args)
-        [:ui/dismiss-banner] (swap! !state dissoc :ui/banner-text))
+        [:dom/prevent-default]             (.preventDefault js-event)
+        [:db/assoc & args]                 (apply swap! !state assoc args)
+        [:ui/dismiss-banner]               (swap! !state dissoc :ui/banner-text)
+        [:dom/set-input-text element text] (set! (.-value element) text)
+        [:dom/focus-element element]       (.focus element)
+)
 ```
 
-Which make it much easier for a human to parse the action vectors being matched.
+Which makes it much easier for a human to parse the action vectors being matched.
 
 #### Split on action namespace
 
@@ -97,7 +142,7 @@ If your app has a lot of action handlers, you may want to split them into separa
 
 #### re-frame style event handlers
 
-[re-frame](https://github.com/day8/re-frame) separates the handlers into events and effects. You can do the same, by making your action handlers non-effectful. E.g. return a map with any new state and any effects to be executed. Then take care of the state updates outside the action handlers and add an effect handler for dealing with everything effectful. This makes your action handlers easier to reason about and to test. It also makes it straightforward to adapt many re-frame effect handlers out there to work with your Replicant app.
+[re-frame](https://github.com/day8/re-frame) separates the handlers into events and effects. You can do the same, separating on actions and effects, by making your action handlers non-effectful. E.g. return a map with any new state and any effects to be executed. Then take care of the state updates outside the action handlers and add an effect handler for dealing with everything effectful. This makes your action handlers easier to reason about and to test. It also makes it straightforward to adapt many re-frame effect handlers out there to work with your Replicant app.
 
 #### Validate the actions
 
