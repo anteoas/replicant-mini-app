@@ -4,8 +4,7 @@ A tiny example of a [Replicant](https://github.com/cjohansen/replicant) app.
 
 This is an example of how to wire up a Replicant app, with a focus on keeping the views as pure data. We can do this because replicant supports pure data dom event handlers and vdom lifecycle hooks. 
 
-**Replicant**
-: A native [ClojureScript](https://clojurescript.org) virtual DOM renderer - render hiccup directly
+**Replicant**: A native [ClojureScript](https://clojurescript.org) virtual DOM renderer - render hiccup directly
 
 ## Running the app
 
@@ -110,7 +109,7 @@ In the log we can find the result of:
     [:button {:type :submit} "Save draft"]]])
  ```
  
-What's new here is the clear button that appears only when there is data. When clicked, it clears both the draft (in the appp db) and the input field (in the DOM). It also focuses the input field (in the DOM). The DOM work could be achieved with functions quering and setting state directly on the DOM. But we want it to be pure data in the view! 
+What's new here is the clear button that appears only when there is data. When clicked, it clears both the draft (in the app db) and the input field (in the DOM). It also focuses the input field (in the DOM). The DOM work could be achieved with functions quering and setting state directly on the DOM. But we want it to be pure data in the view! 
 
 So we have added a life-cycle hook that will fire an action that saves the element to the app db when the input field mounts. Then, when the clear icon is clicked, we will fire actions that will do the quering and setting of the DOM state. These actions picks up the element from the app db.
  
