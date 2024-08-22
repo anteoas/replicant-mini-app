@@ -74,16 +74,19 @@
     (prn "Triggered action" action)
     (let [enriched-action (->> action
                                (enrich-action-from-event replicant-data)
-                               (enrich-action-from-state @!state))]
+                               (enrich-action-from-state @!state))
+          [action-name & args] enriched-action]
       (prn "Enriched action" enriched-action)
-      (case (first enriched-action)
+      (case action-name
         :dom/prevent-default (.preventDefault js-event)
         :something/init-something (do 
-                                    (js/console.debug "Init something, dom-node:" (second enriched-action))
-                                    (swap! !state merge {:something/dom-node (second enriched-action)}))
+                                    (js/console.debug "Init something, dom-node:" (first args))
+                                    (swap! !state merge {:something/dom-node (first args)}))
         :db/assoc (apply swap! !state assoc (rest enriched-action))
         :ui/dismiss-banner (swap! !state dissoc :ui/banner-text)
-        (prn "Unknown action" action))))
+        :dom/fx-set-text (set! (.-value (first args)) (second args))
+        :dom/fx-focus-element (.focus (first args)
+        (prn "Unknown action" action)))))
   (render! @!state))
 
 (defn ^{:dev/after-load true :export true} start! []
