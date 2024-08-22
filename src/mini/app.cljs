@@ -64,6 +64,11 @@
        :else x))
    action))
 
+(defn- render! [state]
+  (r/render
+   (js/document.getElementById "app")
+   (main-view state)))
+
 (defn- event-handler [{:replicant/keys [^js js-event] :as replicant-data} actions]
   (doseq [action actions]
     (prn "Triggered action" action)
@@ -78,12 +83,8 @@
                                     (swap! !state merge {:something/dom-node (second enriched-action)}))
         :db/assoc (apply swap! !state assoc (rest enriched-action))
         :ui/dismiss-banner (swap! !state dissoc :ui/banner-text)
-        (prn "Unknown action" enriched-action)))))
-
-(defn- render! [state]
-  (r/render
-   (js/document.getElementById "app")
-   (main-view state)))
+        (prn "Unknown action" action))))
+  (render! @!state))
 
 (defn ^{:dev/after-load true :export true} start! []
   (render! @!state))
@@ -91,7 +92,4 @@
 (defn ^:export init! []
   (inspector/inspect "App state" !state)
   (r/set-dispatch! event-handler)
-  (add-watch !state :render (fn [_k _r o n]
-                              (when (not= o n)
-                                (render! @!state))))
   (start!))
