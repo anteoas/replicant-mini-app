@@ -83,9 +83,6 @@
       (prn "Enriched action" enriched-action)
       (case action-name
         :dom/prevent-default (.preventDefault js-event)
-        :something/init-something (do 
-                                    (js/console.debug "Init something, dom-node:" (first args))
-                                    (swap! !state merge {:something/dom-node (first args)}))
         :db/assoc (apply swap! !state assoc (rest enriched-action))
         :ui/dismiss-banner (swap! !state dissoc :ui/banner-text)
         :dom/set-input-text (set! (.-value (first args)) (second args))
