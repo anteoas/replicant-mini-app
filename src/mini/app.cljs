@@ -1,5 +1,6 @@
 (ns mini.app
-  (:require [clojure.walk :as walk]
+  (:require [clojure.string :as string]
+            [clojure.walk :as walk]
             [gadget.inspector :as inspector]
             [replicant.dom :as r]))
 
@@ -13,17 +14,21 @@
    [:p banner-text]
    [:button {:on {:click [[:ui/dismiss-banner]]}} "Dismiss"]])
 
-(defn- edit-view []
+(defn- edit-view [{:something/keys [draft]}]
   [:div
+   [:h2 "Edit"]
    [:form {:on {:submit [[:dom/prevent-default]
                          [:db/assoc :something/saved [:db/get :something/draft]]]}}
-    [:input#draft {:replicant/on-mount [[:db/assoc :something/draft-input-element :dom/node]]
-                   :on {:input [[:db/assoc :something/draft :event/target.value]]}}]
-    [:button {:type :submit} "Save draft"]]
-   [:button {:on {:click [[:db/assoc :something/draft ""]
-                          [:dom/set-input-text [:db/get :something/draft-input-element] ""]
-                          [:dom/focus-element [:db/get :something/draft-input-element]]]}}
-    "Clear draft"]])
+    [:span.wrap-input
+     [:input#draft {:replicant/on-mount [[:db/assoc :something/draft-input-element :dom/node]]
+                    :on {:input [[:db/assoc :something/draft :event/target.value]]}}]
+     (when-not (string/blank? draft)
+       [:span.icon-right {:on {:click [[:db/assoc :something/draft ""]
+                                       [:dom/set-input-text [:db/get :something/draft-input-element] ""]
+                                       [:dom/focus-element [:db/get :something/draft-input-element]]]}
+                          :title "Clear draft"}
+        "⨉"])]
+    [:button {:type :submit} "Save draft"]]])
 
 (defn- display-view [{:something/keys [draft saved]}]
   [:div
@@ -37,7 +42,7 @@
    (when (:ui/banner-text state)
      (banner-view state))
    [:h1 "A tiny (and silly) Replicant example"]
-   (edit-view)
+   (edit-view state)
    (display-view state)])
 
 (defn- enrich-action-from-event [{:replicant/keys [js-event node]} actions]
