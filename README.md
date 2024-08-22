@@ -110,7 +110,9 @@ In the log we can find the result of:
     [:button {:type :submit} "Save draft"]]])
  ```
  
-What's new here is the clear button that appears only when there is data. When clicked, it clears both the draft (in the appp db) and the input field (in the DOM). Plus focus the input field (in the DOM). This DOM work could be achieved with functions quering and setting state directly on the DOM. But we want it to be pure data in the view, so we have added a life-cycle hook that will fire an action that saves the element to the app db when the input field mounts. Then, when the clear icon is clicked, we will fire actions that will do the quering and setting of the DOM state. These actions picks up the element from the app db.
+What's new here is the clear button that appears only when there is data. When clicked, it clears both the draft (in the appp db) and the input field (in the DOM). It also focuses the input field (in the DOM). The DOM work could be achieved with functions quering and setting state directly on the DOM. But we want it to be pure data in the view! 
+
+So we have added a life-cycle hook that will fire an action that saves the element to the app db when the input field mounts. Then, when the clear icon is clicked, we will fire actions that will do the quering and setting of the DOM state. These actions picks up the element from the app db.
  
 ## It's just an example
 
