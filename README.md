@@ -20,9 +20,9 @@ Once built, you can access the app at http://localhost:8787
 
 ## Reading the code
 
-All the code is in [src/mini/app.cljs](src/mini/app.cljs). It is largely void of any comments, to make it easier to navigate. Here is some context to get you started:
+All the code is in [src/mini/app.cljs](src/mini/app.cljs). It is void of any comments, to make it easier to navigate. Here is some context to get you started:
 
-The app uses vectors for the event and lifecycle hook handlers. Each _event_/_hook_ vector holds zero or more _actions_, which also are vectors. The _actions_ will be executed in the order they appear in the _event_ vector. The first element of an _action_ vector is the action key/identifier, and the rest of the elements are the arguments to the action. Here's the `event-handler` function where we dispatch on the action keys. (Destructured to `action-name`):
+The app uses vectors for the event and lifecycle hook handlers. Each _event_/_hook_ vector holds zero or more _actions_, which also are vectors. The _actions_ will be executed in the order they appear in the _event_/_hook_ vector. The first element of an _action_ vector is the action name, and the rest of the elements are the arguments to the action. Here's the `event-handler` function where we dispatch on the action names:
 
 ```clojure
 (defn- event-handler [{:replicant/keys [^js js-event] :as replicant-data} actions]
@@ -129,11 +129,11 @@ We find that [core.match](https://github.com/clojure/core.match) is exceptionall
 
 ```clojure
       (match enriched-action
-        [:dom/prevent-default]             (.preventDefault js-event)
-        [:db/assoc & args]                 (apply swap! !state assoc args)
-        [:db/dissoc & args]                (apply swap! !state dissoc args)
+        [:dom/prevent-default] (.preventDefault js-event)
+        [:db/assoc & args] (apply swap! !state assoc args)
+        [:db/dissoc & args] (apply swap! !state dissoc args)
         [:dom/set-input-text element text] (set! (.-value element) text)
-        [:dom/focus-element element]       (.focus element))
+        [:dom/focus-element element] (.focus element))
 ```
 
 Which makes it much easier for a human to parse the action vectors being matched.
