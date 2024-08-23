@@ -12,7 +12,7 @@
                 :replicant/mounting {:style {:top "-100px"}}
                 :replicant/unmounting {:style {:top "-100px"}}}
    [:p banner-text]
-   [:button {:on {:click [[:ui/dismiss-banner]]}} "Dismiss"]])
+   [:button {:on {:click [[:db/dissoc :ui/banner-text]]}} "Dismiss"]])
 
 (defn- edit-view [{:something/keys [draft]}]
   [:div
@@ -81,8 +81,8 @@
       (prn "Enriched action" enriched-action)
       (case action-name
         :dom/prevent-default (.preventDefault js-event)
-        :db/assoc (apply swap! !state assoc (rest enriched-action))
-        :ui/dismiss-banner (swap! !state dissoc :ui/banner-text)
+        :db/assoc (apply swap! !state assoc args)
+        :db/dissoc (apply swap! !state dissoc args)
         :dom/set-input-text (set! (.-value (first args)) (second args))
         :dom/focus-element (.focus (first args))
         (prn "Unknown action" action))))
