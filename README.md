@@ -6,6 +6,8 @@ This is an example of how to wire up a Replicant app, with a focus on keeping th
 
 **Replicant**: A native [ClojureScript](https://clojurescript.org) virtual DOM renderer - render hiccup directly
 
+To understand a bit of where Replicant (and this app example) comes from, please watch Christian Johansen's talk at JavaZone 2023, [Stateless, Data-driven UIs](https://www.youtube.com/watch?v=8Q1JvQvJ9Z0).
+
 ## Running the app
 
 We're using [shadow-cljs](https://github.com/thheller/shadow-cljs) to build the app. Clojure editors like [Calva](https://calva.io) and [CIDER](https://cider.mx/) will let you quickly start the app and connect you to its REPL. You can also just run it without installing anything, by using npx:
@@ -34,7 +36,7 @@ The app uses vectors for the event and lifecycle hook handlers. Each _event_/_ho
       (case action-name
         :dom/prevent-default (.preventDefault js-event)
         :db/assoc (apply swap! !state assoc (rest enriched-action))
-        :ui/dismiss-banner (swap! !state dissoc :ui/banner-text)
+        :db/dissoc (apply swap! !state dissoc args)
         :dom/set-input-text (set! (.-value (first args)) (second args))
         :dom/focus-element (.focus (first args))
         (prn "Unknown action" action))))
@@ -129,10 +131,9 @@ We find that [core.match](https://github.com/clojure/core.match) is exceptionall
       (match enriched-action
         [:dom/prevent-default]             (.preventDefault js-event)
         [:db/assoc & args]                 (apply swap! !state assoc args)
-        [:ui/dismiss-banner]               (swap! !state dissoc :ui/banner-text)
+        [:db/dissoc & args]                (apply swap! !state dissoc args)
         [:dom/set-input-text element text] (set! (.-value element) text)
-        [:dom/focus-element element]       (.focus element)
-)
+        [:dom/focus-element element]       (.focus element))
 ```
 
 Which makes it much easier for a human to parse the action vectors being matched.
@@ -153,6 +154,10 @@ The example uses the global state atom directly. You may want to create the even
 
 You can make the `event-handler` function detect that you are running in development mode and use Malli to validate the actions (and effects if you go re-frame style). An event driven app can get a bit hard to debug, and getting early warning about non-conforming actions can save the day.
 
+## Keeping the database flat
+
+We think it's worth considering Christian Johansen's advice to try [keep the data as flat as possible](https://chatgpt.com/share/f225e622-44a2-4461-8525-b31f80909d50) (translated from the [original article in Norwegian](https://parenteser.mattilsynet.io/flate-data/)). In this silly app we can keep the databas fully flat, but in a real app you probably also will want actions like `:db/assoc-in`, and `:db/dissoc-in` (and `:db/update-in`).
+
 ## Pure data CSS transitions
 
 The app also sports an example of how to use Replicant's pure data CSS transitions (that's the annoying banner when the app starts).
@@ -161,7 +166,7 @@ The app also sports an example of how to use Replicant's pure data CSS transitio
 
 [Christian Johansen](https://github.com/cjohansen), who created Replicant, also created a data inspector that can be used for any ClojureScript app that uses an atom for its state. It is a Chrome Extension, called [gadget-inspector](https://github.com/cjohansen/gadget-inspector).
 
-Yes, the example app uses the Gadget inspector, but to benefit from it you'll need to first build the inspector Extension and install it in your browser. There's a Babashka script included in the repo that will let you build the extension like so:
+Yes, the example app uses the Gadget inspector, but to benefit from it you'll need to first build the inspector Extension and install it in your browser. There's a Babashka task included in the repo that will let you build the extension like so:
 
 ```sh
 bb dev:build-inspector-extension
