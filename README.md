@@ -145,6 +145,10 @@ If your app has a lot of action handlers, you may want to split them into separa
 
 [re-frame](https://github.com/day8/re-frame) separates the handlers into events and effects. You can do the same, separating on actions and effects, by making your action handlers non-effectful. E.g. return a map with any new state and any effects to be executed. Then take care of the state updates outside the action handlers and add an effect handler for dealing with everything effectful. This makes your action handlers easier to reason about and to test. It also makes it straightforward to adapt many re-frame effect handlers out there to work with your Replicant app.
 
+#### Inject the state
+
+The example uses the global state atom directly. You may want to create the event handler via a function and provide the state to its closure. 
+
 #### Validate the actions
 
 You can make the `event-handler` function detect that you are running in development mode and use Malli to validate the actions (and effects if you go re-frame style). An event driven app can get a bit hard to debug, and getting early warning about non-conforming actions can save the day.
