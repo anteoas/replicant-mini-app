@@ -46,18 +46,16 @@
    (display-view state)])
 
 (defn- enrich-action-from-event [{:replicant/keys [js-event node]} actions]
-  (letfn [(process [x]
-            (cond
-              (keyword? x)
-              (case x
-                :event/target.value (-> js-event .-target .-value)
-                :dom/node node
-                x)
-
-              (coll? x) (into (empty x) (map process x))
-
-              :else x))]
-    (process actions)))
+  (walk/postwalk
+   (fn [x]
+     (cond
+       (keyword? x)
+       (case x
+         :event/target.value (-> js-event .-target .-value)
+         :dom/node node
+         x)
+       :else x))
+   actions))
 
 (defn- enrich-action-from-state [state action]
   (walk/postwalk
