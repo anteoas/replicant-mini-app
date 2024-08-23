@@ -10,6 +10,12 @@ To understand a bit of where Replicant (and this app example) comes from, please
 
 ## Running the app
 
+Prerequisites:
+
+- [Node.js](https://nodejs.org) (or something node-ish enough)
+- [Java](https://adoptopenjdk.net)
+- [Clojure CLI](https://clojure.org/guides/getting_started)
+
 We're using [shadow-cljs](https://github.com/thheller/shadow-cljs) to build the app. Clojure editors like [Calva](https://calva.io) and [CIDER](https://cider.mx/) will let you quickly start the app and connect you to its REPL. You can also just run it without installing anything, by using npx:
 
 ```sh
