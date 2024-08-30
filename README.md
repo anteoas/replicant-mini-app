@@ -6,7 +6,7 @@ This is an example of how to wire up a Replicant app, with a focus on keeping th
 
 **Replicant**: A native [ClojureScript](https://clojurescript.org) virtual DOM renderer - render hiccup directly
 
-To understand a bit of where Replicant (and this app example) comes from, please watch Christian Johansen's talk at JavaZone 2023, [Stateless, Data-driven UIs](https://www.youtube.com/watch?v=8Q1JvQvJ9Z0).
+To understand a bit of where Replicant (and this app example) comes from, please watch Christian Johansen's talk at JavaZone 2023, [Stateless, Data-driven UIs](https://2023.javazone.no/program/85f23370-440f-42b5-bf50-4cb811fef44d).
 
 ## Running the app
 
