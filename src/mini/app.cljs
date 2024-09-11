@@ -2,9 +2,29 @@
   (:require [clojure.string :as string]
             [clojure.walk :as walk]
             [gadget.inspector :as inspector]
-            [replicant.dom :as r]))
+            [replicant.core :as r-core]
+            [replicant.dom :as r-dom]))
 
 (defonce ^:private !state (atom {:ui/banner-text "An annoying banner"}))
+
+(defonce ^:private !el (atom nil))
+
+#_{:clj-kondo/ignore [:unused-private-var]}
+(defn- replicant-dispatch
+  "Dispatch event data outside of Replicant views"
+  ;; TODO: Reimplement with public API once Replicant has one
+  [e data]
+  (let [el @!el]
+    (if (and r-core/*dispatch* el)
+      (if (get-in @r-dom/state [el :rendering?])
+        (js/requestAnimationFrame #(r-core/*dispatch* e data))
+        (r-core/*dispatch* e data))
+      (throw (js/Error. "Cannot dispatch custom event data without a global event handler. Call replicant.core/set-dispatch!")))))
+
+(comment
+  (replicant-dispatch nil [[:db/assoc :ui/banner-text "A less annoying banner"]])
+  (replicant-dispatch nil [[:db/dissoc :ui/banner-text]])
+  :rcf)
 
 (defn banner-view [{:ui/keys [banner-text]}]
   [:div#banner {:style {:top 0
@@ -67,8 +87,8 @@
    action))
 
 (defn- render! [state]
-  (r/render
-   (js/document.getElementById "app")
+  (r-dom/render
+   @!el
    (main-view state)))
 
 (defn- event-handler [{:replicant/keys [^js js-event] :as replicant-data} actions]
@@ -93,5 +113,6 @@
 
 (defn ^:export init! []
   (inspector/inspect "App state" !state)
-  (r/set-dispatch! event-handler)
+  (reset! !el (js/document.getElementById "app"))
+  (r-dom/set-dispatch! event-handler)
   (start!))
