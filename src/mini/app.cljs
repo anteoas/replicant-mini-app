@@ -1,49 +1,63 @@
 (ns mini.app
-  (:require [clojure.string :as string]
-            [clojure.walk :as walk]
+  (:require [clojure.walk :as walk]
             [gadget.inspector :as inspector]
-            [replicant.dom :as r]))
+            [reitit.coercion :as rc]
+            [reitit.coercion.malli :as rcm]
+            [reitit.frontend :as rf]
+            [reitit.frontend.easy :as rfe]
+            [replicant.core :as r-core]
+            [replicant.dom :as r-dom]))
 
-(defonce ^:private !state (atom {:ui/banner-text "An annoying banner"}))
+(defonce ^:private !state (atom {:select/selected "1"
+                                 :select/things ["1" "2" "3" "4" "5" "6" "7" "8" "9" "10" "11"]}))
 
-(defn banner-view [{:ui/keys [banner-text]}]
-  [:div#banner {:style {:top 0
-                        :transition "top 0.25s"}
-                :replicant/mounting {:style {:top "-100px"}}
-                :replicant/unmounting {:style {:top "-100px"}}}
-   [:p banner-text]
-   [:button {:on {:click [[:db/dissoc :ui/banner-text]]}} "Dismiss"]])
+(defonce !el (atom nil))
 
-(defn- edit-view [{:something/keys [draft]}]
+(def ^:private routes [["/"
+                        {:name :route/home}]
+                       ["/select/:id"
+                        {:name :route/select
+                         :coercion rcm/coercion
+                         :parameters {:path [:map [:id :int]]}}]])
+
+(defn start-router! [dispatch!]
+  (rfe/start! (rf/router routes)
+              (fn [m]
+                (dispatch! nil [[:router/dispatch m]]))
+              {:use-fragment true
+               :compile rc/compile-request-coercers}))
+
+(defn replicant-dispatch!
+  "Dispatch event data outside of Replicant actions"
+  ;; TODO: Reimplement with public API once Replicant has one
+  [e data]
+  (let [el @!el]
+    (if (and r-core/*dispatch* el)
+      (if (get-in @r-dom/state [el :rendering?])
+        (js/requestAnimationFrame #(r-core/*dispatch* e data))
+        (r-core/*dispatch* e data))
+      (throw (js/Error. "Cannot dispatch custom event data without a global event handler. Call replicant.core/set-dispatch!")))))
+
+(defn- main-view [{:keys [select/selected]}]
   [:div
    [:h2 "Edit"]
-   [:form {:on {:submit [[:dom/prevent-default]
-                         [:db/assoc :something/saved [:db/get :something/draft]]]}}
-    [:span.wrap-input
-     [:input#draft {:replicant/on-mount [[:db/assoc :something/draft-input-element :dom/node]]
-                    :on {:input [[:db/assoc :something/draft :event/target.value]]}}]
-     (when-not (string/blank? draft)
-       [:span.icon-right {:on {:click [[:db/assoc :something/draft ""]
-                                       [:dom/set-input-text [:db/get :something/draft-input-element] ""]
-                                       [:dom/focus-element [:db/get :something/draft-input-element]]]}
-                          :title "Clear draft"}
-        "⨉"])]
-    [:button {:type :submit} "Save draft"]]])
+   [:select {:on {:change [[:router/navigate-to :route/select {:path-params {:id :event/target.value}}]]
+                  #_[[:db/assoc :select/selected :event/target.value]]}}
+    [:option {:replicant/key "nothing"
+              :selected (or (nil? selected)
+                            (= "nothing" selected))}
+     "Select..."]
+    (for [thing (:select/things @!state)]
+      ^{:key thing}
+      [:option {:replicant/key thing
+                :value thing
+                :selected (= thing selected)}
+       thing])]])
 
-(defn- display-view [{:something/keys [draft saved]}]
-  [:div
-   [:h2 "On display"]
-   [:ul
-    [:li {:replicant/key "draft"} "Draft: " draft]
-    [:li {:replicant/key "saved"} "Saved: " saved]]])
-
-(defn- main-view [state]
-  [:div {:style {:position "relative"}}
-   (when (:ui/banner-text state)
-     (banner-view state))
-   [:h1 "A tiny (and silly) Replicant example"]
-   (edit-view state)
-   (display-view state)])
+(comment
+  (do (swap! !state assoc :select/selected "2") (render! @!state))
+  (do (swap! !state assoc :select/selected "11") (render! @!state) )
+  :rcf)
 
 (defn- enrich-action-from-event [{:replicant/keys [js-event node]} actions]
   (walk/postwalk
@@ -67,11 +81,11 @@
    action))
 
 (defn- render! [state]
-  (r/render
-   (js/document.getElementById "app")
+  (r-dom/render
+   @!el
    (main-view state)))
 
-(defn- event-handler [{:replicant/keys [^js js-event] :as replicant-data} actions]
+(defn- event-handler [replicant-data actions]
   (doseq [action actions]
     (prn "Triggered action" action)
     (let [enriched-action (->> action
@@ -80,11 +94,11 @@
           [action-name & args] enriched-action]
       (prn "Enriched action" enriched-action)
       (case action-name
-        :dom/prevent-default (.preventDefault js-event)
         :db/assoc (apply swap! !state assoc args)
-        :db/dissoc (apply swap! !state dissoc args)
-        :dom/set-input-text (set! (.-value (first args)) (second args))
-        :dom/focus-element (.focus (first args))
+        :router/dispatch (let [{:keys [path-params]} (first args)
+                               {:keys [id]} path-params]
+                           (swap! !state assoc :select/selected id))
+        :router/navigate-to (rfe/navigate (first args) (second args))
         (prn "Unknown action" action))))
   (render! @!state))
 
@@ -92,6 +106,8 @@
   (render! @!state))
 
 (defn ^:export init! []
+  (reset! !el (js/document.getElementById "app"))
   (inspector/inspect "App state" !state)
-  (r/set-dispatch! event-handler)
+  (r-dom/set-dispatch! event-handler)
+  (start-router! replicant-dispatch!)
   (start!))
