@@ -8,8 +8,67 @@
             [replicant.core :as r-core]
             [replicant.dom :as r-dom]))
 
-(defonce ^:private !state (atom {:select/selected "1"
-                                 :select/things ["1" "2" "3" "4" "5" "6" "7" "8" "9" "10" "11"]}))
+;; Repro for strange issue with reitit + replicant
+;; I am probably holding one or both of these wrong
+;;
+;; Repro:
+;; 1. Start the repl (jack in, shadow-cljs, start and connect the :app build)
+;; 2. Open http://localhost:8787 in the browser (Chrome)
+;; 3. Confirm that "Select..." is selected (inspect in dev tools too)
+;; 4. Select "11" (say)
+;; 5. Confirm that "11" is selected (also check the browser url)
+;; 6. Go back in the browser
+;; 7. Confirm that "Select..." is selected
+;; 8. Go forward in the browser
+;; Expected: "11" is selected
+;;           in the elements inspector "11" is selected
+;;           the browser url is "http://localhost:8787/#/select/11"
+;; Actual: "Select..." is selected
+;;         in the elements inspector "11" is selected
+;;         the browser url is "http://localhost:8787/#/select/11"
+;;
+;; Things check out in Safari
+;;
+;; Another Chrome specific strangeness:
+;; 1. With the repl started
+;; 2. Open http://localhost:8787 in a new tab
+;; 3. Confirm that "Select..." is selected
+;; 4. Evaluate the dispatches in the below Rich comment form
+;; 5. With each dispatch confirm that the browser do the right things
+;;    (UI, url, elements inspector)
+;; 6. Confirm that now "7" is selected
+;; 7. Go back in the browser
+;; Expected: "11" is selected
+;; Actual: The browser loads its new tab page
+;; 8. Go forward in the browser
+;; 9. Confirm that now "7" is selected
+;; 10. Go back in the browser
+;; Expected: "11" is selected
+;; Actual: The browser loads its new tab page
+;; 11. Go forward in the browser
+;; 12. Confirm that now "7" is selected
+;; 13. Reload the page
+;; 14. Confirm that now "7" is selected
+;; 15. Go back in the browser
+;; Expected: (I don't know what you now expect 😂)
+;; Actual: "11" is selected
+;;         and navigation back and forth in the history works fine 🤯
+;;
+;; In Safari the browser behaves as expected
+
+
+(comment
+  (replicant-dispatch! nil [[:router/navigate-to :route/select {:path-params {:id "2"}}]])
+  ; (rfe/navigate :route/select {:path-params {:id "2"}}) ; equivalent to ^
+  (replicant-dispatch! nil [[:router/navigate-to :route/select {:path-params {:id "11"}}]])
+  (replicant-dispatch! nil [[:router/navigate-to :route/select {:path-params {:id "7"}}]])
+
+
+  (do (swap! !state assoc :select/selected "2") (render! @!state))
+  (do (swap! !state assoc :select/selected "11") (render! @!state))
+  :rcf)
+
+(defonce ^:private !state (atom {:select/things ["1" "2" "3" "4" "5" "6" "7" "8" "9" "10" "11"]}))
 
 (defonce !el (atom nil))
 
@@ -53,11 +112,6 @@
                 :value thing
                 :selected (= thing selected)}
        thing])]])
-
-(comment
-  (do (swap! !state assoc :select/selected "2") (render! @!state))
-  (do (swap! !state assoc :select/selected "11") (render! @!state) )
-  :rcf)
 
 (defn- enrich-action-from-event [{:replicant/keys [js-event node]} actions]
   (walk/postwalk
