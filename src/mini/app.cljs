@@ -11,7 +11,9 @@
 
 (def storage-key "replicant-todomvc")
 
-(def persist-keys [:app/todo-items :app/mark-all-state])
+(def persist-keys [:app/todo-items
+                   :item/add-draft
+                   :app/mark-all-state])
 
 (defn load-persisted! []
   (or (->> (.getItem js/localStorage storage-key)
@@ -32,21 +34,33 @@
 (defn remove-index [i v]
   (vec (concat (subvec v 0 i) (subvec v (inc i)))))
 
-(defn- add-view []
+(defn- add-view [{:keys [item/add-draft]}]
   [:form {:on {:submit [[:dom/prevent-default]
-                        [:db/update :app/todo-items maybe-add [:db/get :item/draft]]
-                        [:db/assoc :item/draft ""]
-                        [:dom/set-input-text [:db/get :dom/draft-input-element] ""]]}}
-   [:input.new-todo {:replicant/on-mount [[:db/assoc :dom/draft-input-element :dom/node]]
+                        [:db/update :app/todo-items maybe-add add-draft]
+                        [:db/assoc :item/add-draft ""]
+                        [:dom/set-input-text [:db/get :dom/add-draft-input-element] ""]]}}
+   [:input.new-todo {:replicant/on-mount [[:db/assoc :dom/add-draft-input-element :dom/node]]
                      :type :text
                      :autofocus true
                      :placeholder "What needs to be done?"
-                     :on {:input [[:db/assoc :item/draft :event/target.value]]}}]])
+                     :on {:input [[:db/assoc :item/add-draft :event/target.value]]}}]])
 
-(defn- todo-list-view [{:keys [app/todo-items]}]
+(defn- edit-submit-actions [edit-draft i]
+  (let [trimmed (string/trim edit-draft)]
+    (into [[:dom/prevent-default]
+           [:db/dissoc :app/editing-item-index]]
+          (if (string/blank? trimmed)
+            [[:db/update :app/todo-items (partial remove-index i)]
+             [:app/set-mark-all-state]]
+            [[:db/assoc-in [:app/todo-items i :item/title] trimmed]]))))
+
+(defn- todo-list-view [{:keys [app/todo-items app/editing-item-index item/edit-draft]}]
   [:ul.todo-list
    (map-indexed (fn [i item]
-                  [:li {:replicant/key (:item/id item)}
+                  [:li {:replicant/key (:item/id item)
+                        :class (when (= i editing-item-index) ["editing"])
+                        :on {:dblclick [[:db/assoc :app/editing-item-index i]
+                                        [:db/assoc :item/edit-draft (:item/title item)]]}}
                    [:div.view
                     [:input.toggle {:type :checkbox
                                     :checked (:item/completed item)
@@ -54,7 +68,16 @@
                                                   [:app/set-mark-all-state]]}}]
                     [:label (:item/title item)]
                     [:button.destroy {:on {:click [[:db/update :app/todo-items (partial remove-index i)]
-                                                   [:app/set-mark-all-state]]}}]]])
+                                                   [:app/set-mark-all-state]]}}]]
+                   (when (= i editing-item-index)
+                     [:form {:on {:submit (edit-submit-actions edit-draft i)}}
+                      [:input.edit {:replicant/on-mount [[:db/assoc :dom/edit-draft-input-element :dom/node]
+                                                         [:dom/focus-element :dom/node]]
+                                    :class ["edit"]
+                                    :value (:item/title item)
+                                    :on {:blur (into [[:db/dissoc :app/editing-item-index]]
+                                                     (edit-submit-actions edit-draft i))
+                                         :input [[:db/assoc :item/edit-draft :event/target.value]]}}]])])
                 todo-items)])
 
 (defn- main-view [{:keys [app/todo-items] :as state}]
@@ -87,7 +110,7 @@
   [:section.todoapp
    [:header.header
     [:h1 "todos"]
-    (add-view)]
+    (add-view state)]
    (when (seq todo-items)
      (list
       (main-view state)
@@ -150,12 +173,12 @@
         :app/set-mark-all-state (swap! !state assoc :app/mark-all-state (not (get-mark-all-as-state (:app/todo-items @!state))))
         :dom/prevent-default (.preventDefault js-event)
         :db/assoc (apply swap! !state assoc args)
+        :db/assoc-in (apply swap! !state assoc-in args)
         :db/dissoc (apply swap! !state dissoc args)
-        :db/update (apply swap! !state update (first args) (rest args))
-        :db/update-in (apply swap! !state update-in (first args) (rest args))
+        :db/update (apply swap! !state update args)
+        :db/update-in (apply swap! !state update-in args)
         :dom/set-input-text (set! (.-value (first args)) (second args))
-        ;:dom/focus-element (.focus (first args))
-        )
+        :dom/focus-element (.focus (first args)))
       (persist! @!state)))
   (render! @!state))
 
