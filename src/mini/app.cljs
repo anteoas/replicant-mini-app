@@ -104,15 +104,25 @@
        [:button.clear-completed {:on {:click [[:db/dissoc :app/todo-items]]}}
         "Clear completed"])]))
 
+(defn- footer-view []
+  [:footer.info
+   [:p "Double-click to edit a todo"]
+   [:p "Created by "
+    [:a {:href "https://github.com/PEZ"} "Peter Strömberg"]]
+   [:p "Part of "
+    [:a {:href "https://todomvc.com"} "TodoMVC"]]])
+
 (defn- todoapp-view [{:keys [app/todo-items] :as state}]
-  [:section.todoapp
-   [:header.header
-    [:h1 "todos"]
-    (add-view state)]
-   (when (seq todo-items)
-     (list
-      (main-view state)
-      (footer-view state)))])
+  [:div
+   [:section.todoapp
+    [:header.header
+     [:h1 "todos"]
+     (add-view state)]
+    (when (seq todo-items)
+      (list
+       (main-view state)
+       (items-footer-view state)))]
+   (footer-view)])
 
 (defn get-mark-all-as-state [items]
   (let [as-state (if (every? :item/completed items)
