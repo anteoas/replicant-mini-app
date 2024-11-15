@@ -43,6 +43,20 @@
                      :placeholder "What needs to be done?"
                      :on {:input [[:db/assoc :item/draft :event/target.value]]}}]])
 
+(defn- todo-list-view [{:keys [app/todo-items]}]
+  [:ul.todo-list
+   (map-indexed (fn [i item]
+                  [:li {:replicant/key (:item/id item)}
+                   [:div.view
+                    [:input.toggle {:type :checkbox
+                                    :checked (:item/completed item)
+                                    :on {:change [[:db/update-in [:app/todo-items i :item/completed] not]
+                                                  [:app/set-mark-all-state]]}}]
+                    [:label (:item/title item)]
+                    [:button.destroy {:on {:click [[:db/update :app/todo-items (partial remove-index i)]
+                                                   [:app/set-mark-all-state]]}}]]])
+                todo-items)])
+
 (defn- main-view [{:keys [app/todo-items] :as state}]
   [:div.main
    [:input#toggle-all.toggle-all {:type :checkbox
@@ -51,18 +65,7 @@
                                                 [:app/mark-all-items-as todo-items :event/target.checked]]}}]
    [:label {:for "toggle-all"}
     "Mark all as complete"]
-   [:ul.todo-list
-    (map-indexed (fn [i item]
-                   [:li {:replicant/key (:item/id item)}
-                    [:div.view
-                     [:input.toggle {:type :checkbox
-                                     :checked (:item/completed item)
-                                     :on {:change [[:db/update-in [:app/todo-items i :item/completed] not]
-                                                   [:app/set-mark-all-state]]}}]
-                     [:label (:item/title item)]
-                     [:button.destroy {:on {:click [[:db/update :app/todo-items (partial remove-index i)]
-                                                    [:app/set-mark-all-state]]}}]]])
-                 todo-items)]])
+   (todo-list-view state)])
 
 (defn footer-view [{:keys [app/todo-items]}]
   (let [active-count (count (remove :item/completed todo-items))]
