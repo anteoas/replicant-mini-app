@@ -45,22 +45,16 @@
                      :placeholder "What needs to be done?"
                      :on {:input [[:db/assoc :item/add-draft :event/target.value]]}}]])
 
-(defn- edit-submit-actions [edit-draft i]
-  (let [trimmed (string/trim edit-draft)]
-    (into [[:dom/prevent-default]
-           [:db/dissoc :app/editing-item-index]]
-          (if (string/blank? trimmed)
-            [[:db/update :app/todo-items (partial remove-index i)]
-             [:app/set-mark-all-state]]
-            [[:db/assoc-in [:app/todo-items i :item/title] trimmed]]))))
-
-(defn- todo-list-view [{:keys [app/todo-items app/editing-item-index item/edit-draft]}]
+(defn- todo-list-view [{:keys [app/todo-items
+                               app/editing-item-index
+                               edit/draft
+                               edit/keyup-code]}]
   [:ul.todo-list
    (map-indexed (fn [i item]
                   [:li {:replicant/key (:item/id item)
                         :class (when (= i editing-item-index) ["editing"])
                         :on {:dblclick [[:db/assoc :app/editing-item-index i]
-                                        [:db/assoc :item/edit-draft (:item/title item)]]}}
+                                        [:db/assoc :edit/draft (:item/title item)]]}}
                    [:div.view
                     [:input.toggle {:type :checkbox
                                     :checked (:item/completed item)
@@ -69,15 +63,17 @@
                     [:label (:item/title item)]
                     [:button.destroy {:on {:click [[:db/update :app/todo-items (partial remove-index i)]
                                                    [:app/set-mark-all-state]]}}]]
-                   (when (= i editing-item-index)
-                     [:form {:on {:submit (edit-submit-actions edit-draft i)}}
-                      [:input.edit {:replicant/on-mount [[:db/assoc :dom/edit-draft-input-element :dom/node]
-                                                         [:dom/focus-element :dom/node]]
-                                    :class ["edit"]
+                   (when (and (= i editing-item-index)
+                              (not= "Escape" keyup-code))
+                     [:form {:replicant/key (:item/id item)
+                             :replicant/on-unmount [[:edit/end-editing (string/trim draft) i]]
+                             :on {:submit (into [[:dom/prevent-default]
+                                                 [:db/dissoc :app/editing-item-index]])}}
+                      [:input.edit {:replicant/on-mount [[:dom/focus-element :dom/node]]
                                     :value (:item/title item)
-                                    :on {:blur (into [[:db/dissoc :app/editing-item-index]]
-                                                     (edit-submit-actions edit-draft i))
-                                         :input [[:db/assoc :item/edit-draft :event/target.value]]}}]])])
+                                    :on {:blur [[:db/dissoc :app/editing-item-index]]
+                                         :keyup [[:db/assoc :edit/keyup-code :event/code]]
+                                         :input [[:db/assoc :edit/draft :event/target.value]]}}]])])
                 todo-items)])
 
 (defn- main-view [{:keys [app/todo-items] :as state}]
@@ -116,6 +112,29 @@
       (main-view state)
       (footer-view state)))])
 
+(defn get-mark-all-as-state [items]
+  (let [as-state (if (every? :item/completed items)
+                   false
+                   (every? :item/completed (filter :item/completed items)))]
+    (prn "Mark all as state" as-state)
+    as-state))
+
+(defn mark-items-as [items completed?]
+  (println "Marking items as" completed?)
+  (mapv (fn [item]
+          (assoc item :item/completed completed?))
+        items))
+
+(defn- end-editing [state keyup-code draft index]
+  (let [save-edit? (and (not (string/blank? draft))
+                        (not= "Escape" keyup-code))
+        delete-item? (string/blank? draft)]
+    (cond-> state
+      save-edit? (assoc-in [:app/todo-items index :item/title] draft)
+      delete-item? (update :app/todo-items (partial remove-index index))
+      delete-item? (assoc :app/mark-all-state (not (get-mark-all-as-state (:app/todo-items state))))
+      :always (dissoc :app/editing-item-index :edit/keyup-code))))
+
 (defn js-get-in [o path]
   (reduce (fn [acc k]
             (unchecked-get acc k))
@@ -147,19 +166,6 @@
    (js/document.getElementById "app")
    (todoapp-view state)))
 
-(defn get-mark-all-as-state [items]
-  (let [as-state (if (every? :item/completed items)
-                   false
-                   (every? :item/completed (filter :item/completed items)))]
-    (prn "Mark all as state" as-state)
-    as-state))
-
-(defn mark-items-as [items completed?]
-  (println "Marking items as" completed?)
-  (mapv (fn [item]
-          (assoc item :item/completed completed?))
-        items))
-
 (defn- event-handler [{:replicant/keys [^js js-event] :as replicant-data} actions]
   (doseq [action actions]
     (prn "Triggered action" action)
@@ -171,6 +177,7 @@
       (case action-name
         :app/mark-all-items-as (swap! !state assoc :app/todo-items (mark-items-as (first args) (second args)))
         :app/set-mark-all-state (swap! !state assoc :app/mark-all-state (not (get-mark-all-as-state (:app/todo-items @!state))))
+        :console/debug (apply (comp js/console.debug prn) args)
         :dom/prevent-default (.preventDefault js-event)
         :db/assoc (apply swap! !state assoc args)
         :db/assoc-in (apply swap! !state assoc-in args)
@@ -178,7 +185,8 @@
         :db/update (apply swap! !state update args)
         :db/update-in (apply swap! !state update-in args)
         :dom/set-input-text (set! (.-value (first args)) (second args))
-        :dom/focus-element (.focus (first args)))
+        :dom/focus-element (.focus (first args))
+        :edit/end-editing (apply swap! !state end-editing (:edit/keyup-code @!state) args))
       (persist! @!state)))
   (render! @!state))
 
