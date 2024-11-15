@@ -13,7 +13,7 @@
 
 (defonce ^:private !state (atom nil))
 
-(defn- replicant-dispatch
+(defn- replicant-dispatch!
   "Dispatch event data outside of Replicant actions"
   ;; TODO: Reimplement with public API once Replicant has one
   [e data]
@@ -24,18 +24,22 @@
         (r-core/*dispatch* e data))
       (throw (js/Error. "Cannot dispatch custom event data without a global event handler. Call replicant.core/set-dispatch!")))))
 
-(def ^:private routes [["/"
-                        {:name :route/home}]
-                       ["/active"
-                        {:name :route/active}]
-                       ["/completed"
-                        {:name :route/completed}]])
+(def ^:private routes [["/" {:name :route/home}]
+                       ["/active" {:name :route/active}]
+                       ["/completed" {:name :route/completed}]])
 
 (defn- start-router! [dispatch!]
   (rfe/start! (rf/router routes)
               (fn [m]
                 (dispatch! nil [[:router/dispatch m]]))
               {:use-fragment true}))
+
+(defn- route-dispatch! [{:keys [data]}]
+  (let [route (:name data)]
+    (case route
+      :route/home (replicant-dispatch! nil [[:db/assoc :app/item-filter :filter/all]])
+      :route/active (replicant-dispatch! nil [[:db/assoc :app/item-filter :filter/active]])
+      :route/completed (replicant-dispatch! nil [[:db/assoc :app/item-filter :filter/completed]]))))
 
 (def storage-key "replicant-todomvc")
 
@@ -86,14 +90,18 @@
                         :keyup [[:db/assoc :edit/keyup-code :event/code]]
                         :input [[:db/assoc :edit/draft :event/target.value]]}}]]))
 
-(defn- todo-list-view [{:keys [app/todo-items edit/editing-item-index]
+(defn- todo-list-view [{:keys [app/todo-items edit/editing-item-index app/item-filter]
                         :as state}]
   [:ul.todo-list
    (map-indexed (fn [index item]
-                  [:li {:replicant/key (:item/id item)
-                        :class (when (= index editing-item-index) ["editing"])
-                        :on {:dblclick [[:db/assoc :edit/editing-item-index index]
-                                        [:db/assoc :edit/draft (:item/title item)]]}}
+                  [:li (cond-> {:replicant/key (:item/id item)
+                                :class (when (= index editing-item-index) ["editing"])
+                                :on {:dblclick [[:db/assoc :edit/editing-item-index index]
+                                                [:db/assoc :edit/draft (:item/title item)]]}}
+                         (and (= :filter/active item-filter)
+                              (:item/completed item)) (assoc :style {:display "none"})
+                         (and (= :filter/completed item-filter)
+                              (not (:item/completed item))) (assoc :style {:display "none"}))
                    [:div.view
                     [:input.toggle {:type :checkbox
                                     :checked (:item/completed item)
@@ -227,7 +235,7 @@
         :dom/prevent-default (.preventDefault js-event)
         :dom/set-input-text (set! (.-value (first args)) (second args))
         :edit/end-editing (apply swap! !state end-editing (:edit/keyup-code @!state) args)
-        :router/dispatch (js/console.debug (first args)))
+        :router/dispatch (route-dispatch! (first args)))
       (persist! @!state)))
   (render! @!state))
 
@@ -239,5 +247,5 @@
   (swap! !state assoc :app/el (js/document.getElementById "app"))
   (inspector/inspect "App state" !state)
   (r-dom/set-dispatch! event-handler)
-  (start-router! replicant-dispatch)
+  (start-router! replicant-dispatch!)
   (start!))
