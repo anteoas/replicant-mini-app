@@ -1,11 +1,20 @@
 {
   "name": "replicant-mini-app",
   "version": "0.0.1",
-  "description": "A mini Replicant app",
-  "keywords": ["ClojureScript", "Replicant", "vdom"],
+  "description": "TodoMVC using Replicant",
+  "keywords": [
+    "ClojureScript",
+    "Replicant",
+    "vdom",
+    "todomvc"
+  ],
   "author": "PEZ",
   "license": "MIT",
   "devDependencies": {
     "shadow-cljs": "^2.28.12"
+  },
+  "dependencies": {
+    "todomvc-app-css": "^2.4.3",
+    "todomvc-common": "^1.0.5"
   }
 }
