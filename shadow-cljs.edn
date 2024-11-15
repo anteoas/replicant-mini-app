@@ -1,8 +1,8 @@
 {:deps true
- :dev-http {8787 {:root "public"
+ :dev-http {8787 {:root "."
                   :host "0.0.0.0"}}
  :builds
  {:app {:target :browser
-        :output-dir "public/js/compiled"
+        :output-dir "js/compiled"
         :asset-path "/js/compiled"
         :modules {:main {:init-fn mini.app/init!}}}}}
