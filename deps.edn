@@ -4,4 +4,5 @@
         no.cjohansen/replicant     {:git/url "https://github.com/cjohansen/replicant"
                                     :git/sha "d56a5eaf6f2f8e154cd4008ce518aca93ac92e61"}
         cjohansen/gadget-inspector {:mvn/version "0.2023.04.12"}
-        com.cognitect/transit-cljs {:mvn/version "0.8.280"}}}
+        com.cognitect/transit-cljs {:mvn/version "0.8.280"}
+        metosin/reitit             {:mvn/version "0.7.2"}}}

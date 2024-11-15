@@ -3,11 +3,39 @@
             [clojure.walk :as walk]
             [cognitect.transit :as t]
             [gadget.inspector :as inspector]
-            [replicant.dom :as r]))
+            [replicant.core :as r-core]
+            [replicant.dom :as r-dom]
+            [reitit.frontend :as rf]
+            [reitit.frontend.easy :as rfe]))
 
-(def default-db {:app/todo-items []})
+(def default-db {:app/todo-items []
+                 :app/el nil})
 
 (defonce ^:private !state (atom nil))
+
+(defn- replicant-dispatch
+  "Dispatch event data outside of Replicant actions"
+  ;; TODO: Reimplement with public API once Replicant has one
+  [e data]
+  (let [el (:app/el @!state)]
+    (if (and r-core/*dispatch* el)
+      (if (get-in @r-dom/state [el :rendering?])
+        (js/requestAnimationFrame #(r-core/*dispatch* e data))
+        (r-core/*dispatch* e data))
+      (throw (js/Error. "Cannot dispatch custom event data without a global event handler. Call replicant.core/set-dispatch!")))))
+
+(def ^:private routes [["/"
+                        {:name :route/home}]
+                       ["/active"
+                        {:name :route/active}]
+                       ["/completed"
+                        {:name :route/completed}]])
+
+(defn- start-router! [dispatch!]
+  (rfe/start! (rf/router routes)
+              (fn [m]
+                (dispatch! nil [[:router/dispatch m]]))
+              {:use-fragment true}))
 
 (def storage-key "replicant-todomvc")
 
@@ -15,12 +43,12 @@
                    :add/draft
                    :app/mark-all-state])
 
-(defn load-persisted! []
+(defn- load-persisted! []
   (or (->> (.getItem js/localStorage storage-key)
            (t/read (t/reader :json)))
       default-db))
 
-(defn persist! [state]
+(defn- persist! [state]
   (.setItem js/localStorage storage-key (t/write (t/writer :json) (select-keys state persist-keys))))
 
 (defn- maybe-add [coll s]
@@ -31,7 +59,7 @@
                   :item/completed false
                   :item/id (random-uuid)}))))
 
-(defn remove-index [i v]
+(defn- remove-index [i v]
   (vec (concat (subvec v 0 i) (subvec v (inc i)))))
 
 (defn- add-view [{:keys [add/draft]}]
@@ -88,7 +116,7 @@
     "Mark all as complete"]
    (todo-list-view state)])
 
-(defn items-footer-view [{:keys [app/todo-items]}]
+(defn- items-footer-view [{:keys [app/todo-items]}]
   (let [active-count (count (remove :item/completed todo-items))]
     [:footer.footer
      [:span.todo-count
@@ -124,14 +152,14 @@
        (items-footer-view state)))]
    (footer-view)])
 
-(defn get-mark-all-as-state [items]
+(defn- get-mark-all-as-state [items]
   (let [as-state (if (every? :item/completed items)
                    false
                    (every? :item/completed (filter :item/completed items)))]
     (prn "Mark all as state" as-state)
     as-state))
 
-(defn mark-items-as [items completed?]
+(defn- mark-items-as [items completed?]
   (println "Marking items as" completed?)
   (mapv (fn [item]
           (assoc item :item/completed completed?))
@@ -147,7 +175,7 @@
       delete-item? (assoc :app/mark-all-state (not (get-mark-all-as-state (:app/todo-items state))))
       :always (dissoc :edit/editing-item-index :edit/keyup-code))))
 
-(defn js-get-in [o path]
+(defn- js-get-in [o path]
   (reduce (fn [acc k]
             (unchecked-get acc k))
           o
@@ -174,8 +202,8 @@
    action))
 
 (defn- render! [state]
-  (r/render
-   (js/document.getElementById "app")
+  (r-dom/render
+   (:app/el state)
    (todoapp-view state)))
 
 (defn- event-handler [{:replicant/keys [^js js-event] :as replicant-data} actions]
@@ -198,7 +226,8 @@
         :dom/focus-element (.focus (first args))
         :dom/prevent-default (.preventDefault js-event)
         :dom/set-input-text (set! (.-value (first args)) (second args))
-        :edit/end-editing (apply swap! !state end-editing (:edit/keyup-code @!state) args))
+        :edit/end-editing (apply swap! !state end-editing (:edit/keyup-code @!state) args)
+        :router/dispatch (js/console.debug (first args)))
       (persist! @!state)))
   (render! @!state))
 
@@ -207,6 +236,8 @@
 
 (defn ^:export init! []
   (reset! !state (load-persisted!))
+  (swap! !state assoc :app/el (js/document.getElementById "app"))
   (inspector/inspect "App state" !state)
-  (r/set-dispatch! event-handler)
+  (r-dom/set-dispatch! event-handler)
+  (start-router! replicant-dispatch)
   (start!))
