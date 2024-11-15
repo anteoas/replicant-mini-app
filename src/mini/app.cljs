@@ -12,7 +12,7 @@
 (def storage-key "replicant-todomvc")
 
 (def persist-keys [:app/todo-items
-                   :item/add-draft
+                   :add/draft
                    :app/mark-all-state])
 
 (defn load-persisted! []
@@ -34,16 +34,16 @@
 (defn remove-index [i v]
   (vec (concat (subvec v 0 i) (subvec v (inc i)))))
 
-(defn- add-view [{:keys [item/add-draft]}]
+(defn- add-view [{:keys [add/draft]}]
   [:form {:on {:submit [[:dom/prevent-default]
-                        [:db/update :app/todo-items maybe-add add-draft]
-                        [:db/assoc :item/add-draft ""]
-                        [:dom/set-input-text [:db/get :dom/add-draft-input-element] ""]]}}
-   [:input.new-todo {:replicant/on-mount [[:db/assoc :dom/add-draft-input-element :dom/node]]
+                        [:db/update :app/todo-items maybe-add draft]
+                        [:db/assoc :add/draft ""]
+                        [:dom/set-input-text [:db/get :add/draft-input-element] ""]]}}
+   [:input.new-todo {:replicant/on-mount [[:db/assoc :add/draft-input-element :dom/node]]
                      :type :text
                      :autofocus true
                      :placeholder "What needs to be done?"
-                     :on {:input [[:db/assoc :item/add-draft :event/target.value]]}}]])
+                     :on {:input [[:db/assoc :add/draft :event/target.value]]}}]])
 
 (defn- edit-view [{:keys [index item edit/editing-item-index edit/draft edit/keyup-code]}]
   (when (and (= index editing-item-index)
@@ -88,7 +88,7 @@
     "Mark all as complete"]
    (todo-list-view state)])
 
-(defn footer-view [{:keys [app/todo-items]}]
+(defn items-footer-view [{:keys [app/todo-items]}]
   (let [active-count (count (remove :item/completed todo-items))]
     [:footer.footer
      [:span.todo-count
@@ -190,14 +190,14 @@
         :app/mark-all-items-as (swap! !state assoc :app/todo-items (mark-items-as (first args) (second args)))
         :app/set-mark-all-state (swap! !state assoc :app/mark-all-state (not (get-mark-all-as-state (:app/todo-items @!state))))
         :console/debug (apply (comp js/console.debug prn) args)
-        :dom/prevent-default (.preventDefault js-event)
         :db/assoc (apply swap! !state assoc args)
         :db/assoc-in (apply swap! !state assoc-in args)
         :db/dissoc (apply swap! !state dissoc args)
         :db/update (apply swap! !state update args)
         :db/update-in (apply swap! !state update-in args)
-        :dom/set-input-text (set! (.-value (first args)) (second args))
         :dom/focus-element (.focus (first args))
+        :dom/prevent-default (.preventDefault js-event)
+        :dom/set-input-text (set! (.-value (first args)) (second args))
         :edit/end-editing (apply swap! !state end-editing (:edit/keyup-code @!state) args))
       (persist! @!state)))
   (render! @!state))
