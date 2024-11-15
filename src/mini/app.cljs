@@ -45,35 +45,37 @@
                      :placeholder "What needs to be done?"
                      :on {:input [[:db/assoc :item/add-draft :event/target.value]]}}]])
 
-(defn- todo-list-view [{:keys [app/todo-items
-                               app/editing-item-index
-                               edit/draft
-                               edit/keyup-code]}]
+(defn- edit-view [{:keys [index item edit/editing-item-index edit/draft edit/keyup-code]}]
+  (when (and (= index editing-item-index)
+             (not= "Escape" keyup-code))
+    [:form {:replicant/key (:item/id item)
+            :replicant/on-unmount [[:edit/end-editing (string/trim draft) index]]
+            :on {:submit (into [[:dom/prevent-default]
+                                [:db/dissoc :edit/editing-item-index]])}}
+     [:input.edit {:replicant/on-mount [[:dom/focus-element :dom/node]]
+                   :value (:item/title item)
+                   :on {:blur [[:db/dissoc :edit/editing-item-index]]
+                        :keyup [[:db/assoc :edit/keyup-code :event/code]]
+                        :input [[:db/assoc :edit/draft :event/target.value]]}}]]))
+
+(defn- todo-list-view [{:keys [app/todo-items edit/editing-item-index]
+                        :as state}]
   [:ul.todo-list
-   (map-indexed (fn [i item]
+   (map-indexed (fn [index item]
                   [:li {:replicant/key (:item/id item)
-                        :class (when (= i editing-item-index) ["editing"])
-                        :on {:dblclick [[:db/assoc :app/editing-item-index i]
+                        :class (when (= index editing-item-index) ["editing"])
+                        :on {:dblclick [[:db/assoc :edit/editing-item-index index]
                                         [:db/assoc :edit/draft (:item/title item)]]}}
                    [:div.view
                     [:input.toggle {:type :checkbox
                                     :checked (:item/completed item)
-                                    :on {:change [[:db/update-in [:app/todo-items i :item/completed] not]
+                                    :on {:change [[:db/update-in [:app/todo-items index :item/completed] not]
                                                   [:app/set-mark-all-state]]}}]
                     [:label (:item/title item)]
-                    [:button.destroy {:on {:click [[:db/update :app/todo-items (partial remove-index i)]
+                    [:button.destroy {:on {:click [[:db/update :app/todo-items (partial remove-index index)]
                                                    [:app/set-mark-all-state]]}}]]
-                   (when (and (= i editing-item-index)
-                              (not= "Escape" keyup-code))
-                     [:form {:replicant/key (:item/id item)
-                             :replicant/on-unmount [[:edit/end-editing (string/trim draft) i]]
-                             :on {:submit (into [[:dom/prevent-default]
-                                                 [:db/dissoc :app/editing-item-index]])}}
-                      [:input.edit {:replicant/on-mount [[:dom/focus-element :dom/node]]
-                                    :value (:item/title item)
-                                    :on {:blur [[:db/dissoc :app/editing-item-index]]
-                                         :keyup [[:db/assoc :edit/keyup-code :event/code]]
-                                         :input [[:db/assoc :edit/draft :event/target.value]]}}]])])
+                   (edit-view (merge state {:index index
+                                            :item item}))])
                 todo-items)])
 
 (defn- main-view [{:keys [app/todo-items] :as state}]
@@ -133,7 +135,7 @@
       save-edit? (assoc-in [:app/todo-items index :item/title] draft)
       delete-item? (update :app/todo-items (partial remove-index index))
       delete-item? (assoc :app/mark-all-state (not (get-mark-all-as-state (:app/todo-items state))))
-      :always (dissoc :app/editing-item-index :edit/keyup-code))))
+      :always (dissoc :edit/editing-item-index :edit/keyup-code))))
 
 (defn js-get-in [o path]
   (reduce (fn [acc k]
