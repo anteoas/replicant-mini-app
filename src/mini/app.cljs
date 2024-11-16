@@ -3,43 +3,30 @@
             [clojure.walk :as walk]
             [cognitect.transit :as t]
             [gadget.inspector :as inspector]
-            [replicant.core :as r-core]
-            [replicant.dom :as r-dom]
             [reitit.frontend :as rf]
-            [reitit.frontend.easy :as rfe]))
+            [reitit.frontend.easy :as rfe]
+            [replicant.dom :as r-dom]))
 
 (def default-db {:app/todo-items []
                  :app/el nil})
 
 (defonce ^:private !state (atom nil))
 
-(defn- replicant-dispatch!
-  "Dispatch event data outside of Replicant actions"
-  ;; TODO: Reimplement with public API once Replicant has one
-  [e data]
-  (let [el (:app/el @!state)]
-    (if (and r-core/*dispatch* el)
-      (if (get-in @r-dom/state [el :rendering?])
-        (js/requestAnimationFrame #(r-core/*dispatch* e data))
-        (r-core/*dispatch* e data))
-      (throw (js/Error. "Cannot dispatch custom event data without a global event handler. Call replicant.dom/set-dispatch! first.")))))
-
 (def ^:private routes [["/" {:name :route/home}]
                        ["/active" {:name :route/active}]
                        ["/completed" {:name :route/completed}]])
 
+(defn get-route-actions [{:keys [data]}]
+  (case (:name data)
+    :route/home [[:db/assoc :app/item-filter :filter/all]]
+    :route/active [[:db/assoc :app/item-filter :filter/active]]
+    :route/completed [[:db/assoc :app/item-filter :filter/completed]]))
+
 (defn- start-router! [dispatch!]
   (rfe/start! (rf/router routes)
               (fn [m]
-                (dispatch! nil [[:router/dispatch m]]))
+                (dispatch! nil (get-route-actions m)))
               {:use-fragment true}))
-
-(defn- route-dispatch! [{:keys [data]}]
-  (let [route (:name data)]
-    (case route
-      :route/home (replicant-dispatch! nil [[:db/assoc :app/item-filter :filter/all]])
-      :route/active (replicant-dispatch! nil [[:db/assoc :app/item-filter :filter/active]])
-      :route/completed (replicant-dispatch! nil [[:db/assoc :app/item-filter :filter/completed]]))))
 
 (def storage-key "replicant-todomvc")
 
@@ -234,8 +221,7 @@
         :dom/focus-element (.focus (first args))
         :dom/prevent-default (.preventDefault js-event)
         :dom/set-input-text (set! (.-value (first args)) (second args))
-        :edit/end-editing (apply swap! !state end-editing (:edit/keyup-code @!state) args)
-        :router/dispatch (route-dispatch! (first args)))
+        :edit/end-editing (apply swap! !state end-editing (:edit/keyup-code @!state) args))
       (persist! @!state)))
   (render! @!state))
 
@@ -247,5 +233,5 @@
   (swap! !state assoc :app/el (js/document.getElementById "app"))
   (inspector/inspect "App state" !state)
   (r-dom/set-dispatch! event-handler)
-  (start-router! replicant-dispatch!)
+  (start-router! event-handler)
   (start!))
