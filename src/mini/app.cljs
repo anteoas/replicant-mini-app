@@ -111,7 +111,7 @@
     "Mark all as complete"]
    (todo-list-view state)])
 
-(defn- items-footer-view [{:keys [app/todo-items]}]
+(defn- items-footer-view [{:keys [app/todo-items app/item-filter]}]
   (let [active-count (count (remove :item/completed todo-items))]
     [:footer.footer
      [:span.todo-count
@@ -120,14 +120,17 @@
            (condp = active-count 1 "item" "items")
            " left")]
      [:ul.filters
-      [:li [:a {:href "#/"} "All"]]
-      [:li [:a {:href "#/active"} "Active"]]
-      [:li [:a {:href "#/completed"} "Completed"]]]
+      [:li [:a {:class (when (= :filter/all item-filter) "selected")
+                :href "#/"} "All"]]
+      [:li [:a {:class (when (= :filter/active item-filter) "selected")
+                :href "#/active"} "Active"]]
+      [:li [:a {:class (when (= :filter/completed item-filter) "selected")
+                :href "#/completed"} "Completed"]]]
      (when (seq (filter :item/completed todo-items))
        [:button.clear-completed {:on {:click [[:db/update :app/todo-items (partial filterv (complement :item/completed))]]}}
         "Clear completed"])]))
 
-(defn- footer-view []
+(defn- app-footer-view []
   [:footer.info
    [:p "Double-click to edit a todo"]
    [:p "Created by "
@@ -145,7 +148,7 @@
       (list
        (main-view state)
        (items-footer-view state)))]
-   (footer-view)])
+   (app-footer-view)])
 
 (defn- get-mark-all-as-state [items]
   (let [as-state (if (every? :item/completed items)
