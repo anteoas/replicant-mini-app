@@ -137,7 +137,7 @@
       [:li [:a {:href "#/active"} "Active"]]
       [:li [:a {:href "#/completed"} "Completed"]]]
      (when (seq (filter :item/completed todo-items))
-       [:button.clear-completed {:on {:click [[:db/dissoc :app/todo-items]]}}
+       [:button.clear-completed {:on {:click [[:db/update :app/todo-items (partial filterv (complement :item/completed))]]}}
         "Clear completed"])]))
 
 (defn- footer-view []
