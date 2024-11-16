@@ -22,7 +22,7 @@
       (if (get-in @r-dom/state [el :rendering?])
         (js/requestAnimationFrame #(r-core/*dispatch* e data))
         (r-core/*dispatch* e data))
-      (throw (js/Error. "Cannot dispatch custom event data without a global event handler. Call replicant.core/set-dispatch!")))))
+      (throw (js/Error. "Cannot dispatch custom event data without a global event handler. Call replicant.dom/set-dispatch! first.")))))
 
 (def ^:private routes [["/" {:name :route/home}]
                        ["/active" {:name :route/active}]
